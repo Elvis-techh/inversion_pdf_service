@@ -54,7 +54,7 @@ app.post('/generate-receipt', async (req, res) => {
 
         // 4. Construct the temporary public URL for Airtable to grab
         // Note: When deployed, replace 'YOUR_SERVER_URL' with your actual hosted domain
-        const fileUrl = `https://YOUR_SERVER_URL/temp/${fileName}`;
+        const fileUrl = `https://inversion-pdf-service.onrender.com/temp/${fileName}`;
 
         // 5. Send the file URL back to Airtable via API
         const airtableUrl = `https://api.airtable.com/v0/${process.env.AIRTABLE_BASE_ID}/Receipts/${recordId}`;
@@ -77,7 +77,8 @@ app.post('/generate-receipt', async (req, res) => {
         }, 10000);
 
     } catch (error) {
-        console.error('Error generating PDF:', error.message);
+        // This will print Airtable's exact error message to your Render logs
+        console.error('Error generating PDF:', error.response ? error.response.data : error.message);
         res.status(500).send('Server Error');
     }
 });
