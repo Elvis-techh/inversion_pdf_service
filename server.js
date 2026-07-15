@@ -3,44 +3,42 @@ const puppeteer = require('puppeteer');
 const axios = require('axios');
 const fs = require('fs');
 const path = require('path');
+const { logoBase64 } = require('./logo'); // Imports your logo quietly!
 require('dotenv').config();
 
 const app = express();
 app.use(express.json());
 
-// Open a public folder so Airtable can temporarily download the PDF
 const tempDir = path.join(__dirname, 'temp');
 if (!fs.existsSync(tempDir)) fs.mkdirSync(tempDir);
 app.use('/temp', express.static(tempDir));
 
 app.post('/generate-receipt', async (req, res) => {
-    // 1. Receive frozen data from your Airtable Automation Webhook
-    // Note: Ensure your Airtable webhook payload includes these new fields (receiptId, fecha, metodoPago, lineItems array)
-    const {
-        recordId,
-        receiptId,
-        fecha,
-        metodoPago,
-        customerName,
-        lineItems, // Expecting an array of objects: [{ descripcion: "Lote 1", monto: "L. 100" }]
-        valorTotal,
-        pagadoAcumulado,
-        balanceAnterior,
-        pagadoHoy,
-        nuevoBalance
+    const { 
+        recordId, receiptId, fecha, metodoPago, customerName, 
+        lineItems, valorTotal, pagadoAcumulado, balanceAnterior, 
+        pagadoHoy, nuevoBalance 
     } = req.body;
 
     try {
-        // 2a. Dynamically generate the table rows for the lots
-        // If lineItems is undefined, it defaults to an empty array to prevent mapping errors
+        // Helper function for currency formatting (comas for thousands & decimal safety)
+        const formatCurrency = (num) => {
+            const parsedNum = Number(num) || 0;
+            return 'L. ' + parsedNum.toLocaleString('en-US', {
+                minimumFractionDigits: 2,
+                maximumFractionDigits: 2
+            });
+        };
+
+        // 2a. Loop through the Today Transactions array
         const lineItemsHtml = (lineItems || []).map(item => `
             <tr>
                 <td>${item.descripcion}</td>
-                <td class="text-right">${item.monto}</td>
+                <td class="text-right">${formatCurrency(item.monto)}</td>
             </tr>
         `).join('');
 
-        // 2b. The HTML Layout injected with JS template literals
+        // 2b. The HTML Layout
         const htmlContent = `
             <!DOCTYPE html>
             <html lang="es">
@@ -100,8 +98,8 @@ app.post('/generate-receipt', async (req, res) => {
             <div class="receipt-container">
                 <header>
                     <div class="logo-section">
-                        <!-- Use a direct URL to your hosted logo image here -->
-                        <img src="https://via.placeholder.com/200x80.png?text=MR+Investments+Logo" alt="MR Investments">
+                        <!-- Logo embedded directly without lag in VS Code! -->
+                        <img src="${logoBase64}" alt="MR Investments">
                         <h2>Inversiones Manuel</h2>
                     </div>
                     <div class="details-section">
@@ -133,32 +131,28 @@ app.post('/generate-receipt', async (req, res) => {
                     <div class="summary-col">
                         <div class="summary-row">
                             <span>Valor Total del Contrato</span>
-                            <span class="value">${valorTotal}</span>
+                            <span class="value">${formatCurrency(valorTotal)}</span>
                         </div>
                         <div class="summary-row">
                             <span>Total Pagado Acumulado</span>
-                            <span class="value">${pagadoAcumulado}</span>
+                            <span class="value">${formatCurrency(pagadoAcumulado)}</span>
                         </div>
                     </div>
 
                     <div class="summary-col">
                         <div class="summary-row">
                             <span>Balance Anterior Total</span>
-                            <span class="value">${balanceAnterior}</span>
+                            <span class="value">${formatCurrency(balanceAnterior)}</span>
                         </div>
                         <div class="summary-row bold">
                             <span>Total Pagado Hoy</span>
-                            <span>${pagadoHoy}</span>
+                            <span>${formatCurrency(pagadoHoy)}</span>
                         </div>
 
                         <div class="highlight-box">
                             <div class="highlight-row">
-                                <span>Nuevo Balance</span>
-                                <span class="red-text">L.</span>
-                            </div>
-                            <div class="highlight-row">
-                                <span>Pendiente</span>
-                                <span class="red-text">${nuevoBalance}</span>
+                                <span>Nuevo Balance Pendiente</span>
+                                <span class="red-text">${formatCurrency(nuevoBalance)}</span>
                             </div>
                         </div>
                     </div>
@@ -173,7 +167,7 @@ app.post('/generate-receipt', async (req, res) => {
                     <p class="thank-you">Gracias por su pago y su confianza en Inversiones Manuel.</p>
                     <p class="contact-info">Inversiones Manuel | Tela, Atlántida | Tel: +504 9315-4685 | Correo: edrosfamily@gmail.com</p>
                     <div class="barcode">
-                        <img src="https://via.placeholder.com/300x60.png?text=||||||||||||||||||||||||||||||||" alt="Código de Barras">
+                        <img src="https://bwipjs-api.metafloor.com/?bcid=code128&text=${receiptId}&scale=2&height=10&includetext=true" alt="Código de Barras">
                     </div>
                 </footer>
             </div>
@@ -181,20 +175,17 @@ app.post('/generate-receipt', async (req, res) => {
             </html>
         `;
 
-        // 3. Fire up Puppeteer to generate the PDF
         const browser = await puppeteer.launch({ args: ['--no-sandbox', '--disable-setuid-sandbox'] });
         const page = await browser.newPage();
         await page.setContent(htmlContent, { waitUntil: 'networkidle0' });
-
+        
         const fileName = `receipt_${recordId}_${Date.now()}.pdf`;
         const filePath = path.join(tempDir, fileName);
         await page.pdf({ path: filePath, format: 'A4', printBackground: true });
         await browser.close();
 
-        // 4. Construct the temporary public URL for Airtable to grab
         const fileUrl = `https://inversion-pdf-service.onrender.com/temp/${fileName}`;
 
-        // 5. Send the file URL back to Airtable via API
         const airtableUrl = `https://api.airtable.com/v0/${process.env.AIRTABLE_BASE_ID}/Receipts/${recordId}`;
         await axios.patch(airtableUrl, {
             fields: {
@@ -209,7 +200,6 @@ app.post('/generate-receipt', async (req, res) => {
 
         res.status(200).send('Success');
 
-        // 6. Cleanup
         setTimeout(() => {
             if (fs.existsSync(filePath)) {
                 fs.unlinkSync(filePath);
