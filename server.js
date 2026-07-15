@@ -16,18 +16,18 @@ app.use('/temp', express.static(tempDir));
 app.post('/generate-receipt', async (req, res) => {
     // 1. Receive frozen data from your Airtable Automation Webhook
     // Note: Ensure your Airtable webhook payload includes these new fields (receiptId, fecha, metodoPago, lineItems array)
-    const { 
-        recordId, 
+    const {
+        recordId,
         receiptId,
         fecha,
         metodoPago,
-        customerName, 
+        customerName,
         lineItems, // Expecting an array of objects: [{ descripcion: "Lote 1", monto: "L. 100" }]
-        valorTotal, 
-        pagadoAcumulado, 
-        balanceAnterior, 
-        pagadoHoy, 
-        nuevoBalance 
+        valorTotal,
+        pagadoAcumulado,
+        balanceAnterior,
+        pagadoHoy,
+        nuevoBalance
     } = req.body;
 
     try {
@@ -185,8 +185,8 @@ app.post('/generate-receipt', async (req, res) => {
         const browser = await puppeteer.launch({ args: ['--no-sandbox', '--disable-setuid-sandbox'] });
         const page = await browser.newPage();
         await page.setContent(htmlContent, { waitUntil: 'networkidle0' });
-        
-        const fileName = `receipt_${recordId}.pdf`;
+
+        const fileName = `receipt_${recordId}_${Date.now()}.pdf`;
         const filePath = path.join(tempDir, fileName);
         await page.pdf({ path: filePath, format: 'A4', printBackground: true });
         await browser.close();
