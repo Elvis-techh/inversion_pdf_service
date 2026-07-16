@@ -21,8 +21,14 @@ app.post('/generate-receipt', async (req, res) => {
     } = req.body;
 
     try {
+        // Helper function for currency formatting (safely cleans strings before parsing)
         const formatCurrency = (num) => {
-            const parsedNum = Number(num) || 0;
+            // Convert to string and strip out 'L.', spaces, and commas
+            let cleanStr = String(num || '').replace(/[L\.\s,]/g, '');
+            
+            // Parse what's left as a decimal number
+            const parsedNum = parseFloat(cleanStr) || 0;
+            
             return 'L. ' + parsedNum.toLocaleString('en-US', {
                 minimumFractionDigits: 2,
                 maximumFractionDigits: 2
