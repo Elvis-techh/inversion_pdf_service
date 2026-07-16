@@ -14,10 +14,10 @@ if (!fs.existsSync(tempDir)) fs.mkdirSync(tempDir);
 app.use('/temp', express.static(tempDir));
 
 app.post('/generate-receipt', async (req, res) => {
-    const { 
-        recordId, receiptId, fecha, metodoPago, customerName, 
-        lineItems, valorTotal, pagadoAcumulado, balanceAnterior, 
-        pagadoHoy, nuevoBalance 
+    const {
+        recordId, receiptId, fecha, metodoPago, customerName,
+        lineItems, valorTotal, pagadoAcumulado, balanceAnterior,
+        pagadoHoy, nuevoBalance
     } = req.body;
 
     try {
@@ -47,130 +47,160 @@ app.post('/generate-receipt', async (req, res) => {
                 <style>
                     :root {
                         --primary-color: #1a253a;
-                        --text-main: #333333;
-                        --text-muted: #888888;
-                        --border-color: #e2e8f0;
+                        --text-main: #111111; /* Darkened for better contrast */
+                        --text-muted: #4a5568; /* Darkened from light gray to dark gray for readability */
+                        --border-color: #cbd5e1;
                         --red-highlight: #d32f2f;
                         --bg-highlight: #f8fafc;
                     }
+                    
+                    /* FIX 1 & 3: Added flexbox to fill the page and increased base font size */
                     body {
                         font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
                         color: var(--text-main);
                         background-color: #ffffff;
                         margin: 0;
                         padding: 40px;
-                        font-size: 14px;
+                        font-size: 16px; /* Increased from 14px */
+                        min-height: 90vh;
+                        display: flex;
+                        flex-direction: column;
+                        box-sizing: border-box;
                     }
-                    .receipt-container { max-width: 800px; margin: 0 auto; }
+                    
+                    /* FIX 1: Allow container to stretch */
+                    .receipt-container { 
+                        max-width: 800px; 
+                        margin: 0 auto; 
+                        width: 100%;
+                        flex-grow: 1; 
+                        display: flex;
+                        flex-direction: column;
+                    }
+                    
                     header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 40px; }
                     .logo-section img { max-width: 200px; height: auto; }
-                    .logo-section h2 { margin: 10px 0 0 0; font-size: 16px; color: var(--primary-color); }
+                    .logo-section h2 { margin: 10px 0 0 0; font-size: 18px; color: var(--primary-color); }
                     .details-section { text-align: right; }
-                    .details-section h1 { margin: 0 0 10px 0; font-size: 24px; color: var(--primary-color); text-transform: uppercase; }
+                    .details-section h1 { margin: 0 0 10px 0; font-size: 26px; color: var(--primary-color); text-transform: uppercase; }
                     .details-section p { margin: 5px 0; color: var(--text-main); }
-                    .label { color: var(--text-muted); font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px; margin-right: 5px; }
+                    .label { color: var(--text-muted); font-size: 13px; text-transform: uppercase; letter-spacing: 0.5px; margin-right: 5px; font-weight: bold; }
+                    
                     .client-box { border: 1px solid var(--border-color); border-radius: 8px; padding: 20px; margin-bottom: 40px; }
                     .client-box .label { display: block; margin-bottom: 8px; }
-                    .client-box .client-name { font-size: 16px; font-weight: 600; }
+                    .client-box .client-name { font-size: 18px; font-weight: 600; }
+                    
                     table { width: 100%; border-collapse: collapse; margin-bottom: 30px; }
-                    th { text-align: left; color: var(--text-muted); font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px; padding-bottom: 12px; border-bottom: 2px solid var(--border-color); }
+                    th { text-align: left; color: var(--text-muted); font-size: 13px; text-transform: uppercase; letter-spacing: 0.5px; padding-bottom: 12px; border-bottom: 2px solid var(--border-color); }
                     th.text-right, td.text-right { text-align: right; }
                     td { padding: 16px 0; border-bottom: 1px solid var(--border-color); font-weight: 600; }
-                    .summary-section { display: flex; justify-content: space-between; margin-bottom: 60px; }
+                    
+                    .summary-section { display: flex; justify-content: space-between; margin-bottom: 40px; }
                     .summary-col { width: 45%; }
-                    .summary-row { display: flex; justify-content: space-between; margin-bottom: 12px; color: var(--text-muted); }
+                    
+                    /* FIX 4: Made all summary rows the same color (text-main) */
+                    .summary-row { display: flex; justify-content: space-between; margin-bottom: 12px; color: var(--text-main); }
                     .summary-row .value { color: var(--text-main); font-weight: 600; }
-                    .summary-row.bold { color: var(--text-main); font-weight: 700; }
+                    
+                    /* FIX 4: Made Total Pagado Hoy slightly different (primary blue color) */
+                    .summary-row.bold { color: var(--primary-color); font-weight: 700; font-size: 18px; border-bottom: 1px solid var(--border-color); padding-bottom: 5px; }
+                    
                     .highlight-box { background-color: var(--bg-highlight); border: 1px solid var(--border-color); border-radius: 8px; padding: 15px; margin-top: 15px; }
-                    .highlight-row { display: flex; justify-content: space-between; font-weight: 700; }
+                    .highlight-row { display: flex; justify-content: space-between; font-weight: 700; font-size: 18px;}
                     .highlight-row .red-text { color: var(--red-highlight); text-align: right; }
-                    footer { text-align: center; margin-top: 60px; }
-                    .signature-area { width: 250px; margin: 0 auto 30px auto; }
-                    .signature-font { font-size: 36px; color: var(--primary-color); margin: 0; line-height: 1; font-style: italic; font-family: 'Brush Script MT', cursive; }
+                    
+                    /* FIX 1: Pushes the footer to the absolute bottom of the page */
+                    footer { text-align: center; margin-top: auto; padding-top: 30px; }
+                    
+                    /* FIX 5: Made the signature area wider and the font significantly larger */
+                    .signature-area { width: 350px; margin: 0 auto 30px auto; }
+                    .signature-font { font-size: 54px; color: var(--primary-color); margin: 0; line-height: 1; font-style: italic; font-family: 'Brush Script MT', cursive; }
                     .signature-area hr { border: none; border-top: 1px solid var(--text-muted); margin: 5px 0; }
-                    .signature-area p { font-size: 12px; color: var(--text-muted); margin: 0; }
-                    .thank-you { color: var(--text-muted); font-size: 13px; margin-bottom: 10px; }
-                    .contact-info { color: #a0aec0; font-size: 12px; margin-bottom: 30px; }
+                    .signature-area p { font-size: 14px; color: var(--text-muted); margin: 0; }
+                    
+                    /* FIX 6: Darker color and larger font size for footer text */
+                    .thank-you { color: var(--text-main); font-size: 18px; margin-bottom: 10px; font-weight: 600; }
+                    .contact-info { color: var(--text-muted); font-size: 14px; margin-bottom: 30px; }
                     .barcode img { max-width: 300px; height: 60px; }
                 </style>
             </head>
             <body>
-            <div class="receipt-container">
-                <header>
-                    <div class="logo-section">
-                        <!-- Logo embedded directly without lag in VS Code! -->
-                        <img src="${logoBase64}" alt="MR Investments">
-                        <h2>Inversiones Manuel</h2>
-                    </div>
-                    <div class="details-section">
-                        <h1>RECIBO DE PAGO</h1>
-                        <p><span class="label">#</span> ${receiptId || 'N/A'}</p>
-                        <p><span class="label">FECHA:</span> ${fecha || new Date().toLocaleDateString('es-HN')}</p>
-                        <p><span class="label">MÉTODO DE PAGO:</span> ${metodoPago || 'Transferencia'}</p>
-                    </div>
-                </header>
-
-                <div class="client-box">
-                    <span class="label">CLIENTE</span>
-                    <span class="client-name">${customerName}</span>
-                </div>
-
-                <table>
-                    <thead>
-                        <tr>
-                            <th>DESCRIPCIÓN / LOTE</th>
-                            <th class="text-right">MONTO PAGADO</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        ${lineItemsHtml}
-                    </tbody>
-                </table>
-
-                <div class="summary-section">
-                    <div class="summary-col">
-                        <div class="summary-row">
-                            <span>Valor Total del Contrato</span>
-                            <span class="value">${formatCurrency(valorTotal)}</span>
+                <div class="receipt-container">
+                    <header>
+                        <div class="logo-section">
+                            <!-- Logo embedded directly without lag in VS Code! -->
+                            <img src="${logoBase64}" alt="MR Investments">
+                            <h2>Inversiones Manuel</h2>
                         </div>
-                        <div class="summary-row">
-                            <span>Total Pagado Acumulado</span>
-                            <span class="value">${formatCurrency(pagadoAcumulado)}</span>
+                        <div class="details-section">
+                            <h1>RECIBO DE PAGO</h1>
+                            <p><span class="label">RECIBO #</span> ${receiptId || 'N/A'}</p>
+                            <p><span class="label">FECHA:</span> ${fecha || new Date().toLocaleDateString('es-HN')}</p>
+                            <p><span class="label">MÉTODO DE PAGO:</span> ${metodoPago || 'Transferencia'}</p>
                         </div>
+                    </header>
+
+                    <div class="client-box">
+                        <span class="label">CLIENTE</span>
+                        <span class="client-name">${customerName}</span>
                     </div>
 
-                    <div class="summary-col">
-                        <div class="summary-row">
-                            <span>Balance Anterior Total</span>
-                            <span class="value">${formatCurrency(balanceAnterior)}</span>
-                        </div>
-                        <div class="summary-row bold">
-                            <span>Total Pagado Hoy</span>
-                            <span>${formatCurrency(pagadoHoy)}</span>
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>DESCRIPCIÓN / LOTE</th>
+                                <th class="text-right">MONTO PAGADO</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${lineItemsHtml}
+                        </tbody>
+                    </table>
+
+                    <div class="summary-section">
+                        <div class="summary-col">
+                            <div class="summary-row">
+                                <span>Valor Total del Contrato</span>
+                                <span class="value">${formatCurrency(valorTotal)}</span>
+                            </div>
+                            <div class="summary-row">
+                                <span>Total Pagado Acumulado</span>
+                                <span class="value">${formatCurrency(pagadoAcumulado)}</span>
+                            </div>
                         </div>
 
-                        <div class="highlight-box">
-                            <div class="highlight-row">
-                                <span>Nuevo Balance Pendiente</span>
-                                <span class="red-text">${formatCurrency(nuevoBalance)}</span>
+                        <div class="summary-col">
+                            <div class="summary-row">
+                                <span>Balance Anterior Total</span>
+                                <span class="value">${formatCurrency(balanceAnterior)}</span>
+                            </div>
+                            <div class="summary-row bold">
+                                <span>Total Pagado Hoy</span>
+                                <span>${formatCurrency(pagadoHoy)}</span>
+                            </div>
+
+                            <div class="highlight-box">
+                                <div class="highlight-row">
+                                    <span>Nuevo Balance Pendiente</span>
+                                    <span class="red-text">${formatCurrency(nuevoBalance)}</span>
+                                </div>
                             </div>
                         </div>
                     </div>
-                </div>
 
-                <footer>
-                    <div class="signature-area">
-                        <p class="signature-font">Manuel Rivera</p>
-                        <hr>
-                        <p>Firma Autorizada</p>
-                    </div>
-                    <p class="thank-you">Gracias por su pago y su confianza en Inversiones Manuel.</p>
-                    <p class="contact-info">Inversiones Manuel | Tela, Atlántida | Tel: +504 9315-4685 | Correo: edrosfamily@gmail.com</p>
-                    <div class="barcode">
-                        <img src="https://bwipjs-api.metafloor.com/?bcid=code128&text=${receiptId}&scale=2&height=10&includetext=true" alt="Código de Barras">
-                    </div>
-                </footer>
-            </div>
+                    <footer>
+                        <div class="signature-area">
+                            <p class="signature-font">Manuel Rivera</p>
+                            <hr>
+                            <p>Firma Autorizada</p>
+                        </div>
+                        <p class="thank-you">Gracias por su pago y su confianza en Inversiones Manuel.</p>
+                        <p class="contact-info">Inversiones Manuel | Tela, Atlántida | Tel: +504 9315-4685 | Correo: edrosfamily@gmail.com</p>
+                        <div class="barcode">
+                            <img src="https://bwipjs-api.metafloor.com/?bcid=code128&text=${receiptId}&scale=2&height=10&includetext=true" alt="Código de Barras">
+                        </div>
+                    </footer>
+                </div>
             </body>
             </html>
         `;
@@ -178,7 +208,7 @@ app.post('/generate-receipt', async (req, res) => {
         const browser = await puppeteer.launch({ args: ['--no-sandbox', '--disable-setuid-sandbox'] });
         const page = await browser.newPage();
         await page.setContent(htmlContent, { waitUntil: 'networkidle0' });
-        
+
         const fileName = `receipt_${recordId}_${Date.now()}.pdf`;
         const filePath = path.join(tempDir, fileName);
         await page.pdf({ path: filePath, format: 'A4', printBackground: true });
