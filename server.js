@@ -20,21 +20,14 @@ app.post('/generate-receipt', async (req, res) => {
         pagadoHoy, nuevoBalance
     } = req.body;
 
+    let browser; // Declare browser up here so the 'finally' block can see it!
+
     try {
-        // Helper function for currency formatting (safely cleans strings while preserving the decimal point)
-        // Helper function for currency formatting (safely handles "L." and commas)
         const formatCurrency = (num) => {
             let str = String(num || '');
-            
-            // 1. Specifically remove the "L." first so its period doesn't break the math
             let cleanStr = str.replace(/L\./gi, '');
-            
-            // 2. Remove any remaining commas, spaces, or stray "L"s
             cleanStr = cleanStr.replace(/[L\s,]/gi, '');
-
-            // 3. Parse the clean string (which is now just "16672.00")
             const parsedNum = parseFloat(cleanStr) || 0;
-            
             return 'L. ' + parsedNum.toLocaleString('en-US', {
                 minimumFractionDigits: 2,
                 maximumFractionDigits: 2
@@ -76,15 +69,7 @@ app.post('/generate-receipt', async (req, res) => {
                         box-sizing: border-box;
                     }
                     
-                    .receipt-container { 
-                        max-width: 800px; 
-                        margin: 0 auto; 
-                        width: 100%;
-                        flex-grow: 1; 
-                        display: flex;
-                        flex-direction: column;
-                    }
-                    
+                    .receipt-container { max-width: 800px; margin: 0 auto; width: 100%; flex-grow: 1; display: flex; flex-direction: column; }
                     header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 40px; }
                     .logo-section img { max-width: 200px; height: auto; }
                     .logo-section h2 { margin: 10px 0 0 0; font-size: 18px; color: var(--primary-color); }
@@ -107,17 +92,14 @@ app.post('/generate-receipt', async (req, res) => {
                     
                     .summary-row { display: flex; justify-content: space-between; margin-bottom: 12px; color: var(--text-main); }
                     .summary-row .value { color: var(--text-main); font-weight: 600; }
-                    
                     .summary-row.bold { color: var(--primary-color); font-weight: 700; font-size: 18px; border-bottom: 1px solid var(--border-color); padding-bottom: 5px; }
                     
-                    /* FIX 6: Forces the Nuevo Balance row to stay inline and center-aligned vertically */
                     .highlight-box { background-color: var(--bg-highlight); border: 1px solid var(--border-color); border-radius: 8px; padding: 15px; margin-top: 15px; width: 100%; box-sizing: border-box; }
                     .highlight-row { display: flex; justify-content: space-between; align-items: center; font-weight: 700; font-size: 18px;}
                     .highlight-row .red-text { color: var(--red-highlight); text-align: right; white-space: nowrap; }
                     
                     footer { text-align: center; margin-top: auto; padding-top: 30px; }
                     
-                    /* FIX 5: Bolder, bigger cursive signature */
                     .signature-area { width: 350px; margin: 0 auto 30px auto; }
                     .signature-font { font-size: 72px; font-weight: bold; color: var(--primary-color); margin: 0; line-height: 1; font-style: italic; font-family: 'Brush Script MT', 'Lucida Handwriting', cursive; }
                     .signature-area hr { border: none; border-top: 1px solid var(--text-muted); margin: 5px 0; }
@@ -200,7 +182,6 @@ app.post('/generate-receipt', async (req, res) => {
                         <p class="thank-you">Gracias por su pago y su confianza en Inversiones Manuel.</p>
                         <p class="contact-info">Inversiones Manuel | Tela, Atlántida | Tel: +504 9315-4685 | Correo: edrosfamily@gmail.com</p>
                         <div class="barcode">
-                            <!-- FIX 4: Removed includetext flag from URL so only the lines render -->
                             <img src="https://bwipjs-api.metafloor.com/?bcid=code128&text=${receiptId}&scale=2&height=10" alt="Código de Barras">
                         </div>
                     </footer>
@@ -209,18 +190,29 @@ app.post('/generate-receipt', async (req, res) => {
             </html>
         `;
 
-        const browser = await puppeteer.launch({ args: ['--no-sandbox', '--disable-setuid-sandbox'] });
+        // Launch Puppeteer with highly strict memory-saving flags
+        browser = await puppeteer.launch({ 
+            args: [
+                '--no-sandbox', 
+                '--disable-setuid-sandbox',
+                '--disable-dev-shm-usage', // Essential for 512MB RAM limits
+                '--single-process',
+                '--no-zygote'
+            ] 
+        });
+
         const page = await browser.newPage();
-        await page.setContent(htmlContent, { waitUntil: 'networkidle0' });
+        
+        // Changed to networkidle2 and increased timeout so the barcode doesn't crash the server
+        await page.setContent(htmlContent, { waitUntil: 'networkidle2', timeout: 45000 });
 
         const fileName = `receipt_${recordId}_${Date.now()}.pdf`;
         const filePath = path.join(tempDir, fileName);
         await page.pdf({ path: filePath, format: 'A4', printBackground: true });
-        await browser.close();
-
+        
         const fileUrl = `https://inversion-pdf-service.onrender.com/temp/${fileName}`;
-
         const airtableUrl = `https://api.airtable.com/v0/${process.env.AIRTABLE_BASE_ID}/Receipts/${recordId}`;
+        
         await axios.patch(airtableUrl, {
             fields: { "Receipt PDF": [{ url: fileUrl }] }
         }, {
@@ -237,6 +229,11 @@ app.post('/generate-receipt', async (req, res) => {
     } catch (error) {
         console.error('Error generating PDF:', error.response ? error.response.data : error.message);
         res.status(500).send('Server Error');
+    } finally {
+        // THE LIFESAVER: This ensures Chrome is completely killed and memory is freed, even if it crashes!
+        if (browser) {
+            await browser.close();
+        }
     }
 });
 
