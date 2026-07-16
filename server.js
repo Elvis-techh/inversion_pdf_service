@@ -22,18 +22,17 @@ app.post('/generate-receipt', async (req, res) => {
 
     try {
         // Helper function for currency formatting (safely cleans strings while preserving the decimal point)
+        // Helper function for currency formatting (safely handles "L." and commas)
         const formatCurrency = (num) => {
-            // 1. Convert to string
             let str = String(num || '');
             
-            // 2. Remove "L.", "L", commas, and spaces, but KEEP the decimal point (.)
-            let cleanStr = str.replace(/[L\s,]/gi, '');
+            // 1. Specifically remove the "L." first so its period doesn't break the math
+            let cleanStr = str.replace(/L\./gi, '');
             
-            // 3. If there was a trailing "L." or dot, we make sure it parses cleanly
-            if (cleanStr.startsWith('.')) {
-                cleanStr = '0' + cleanStr;
-            }
+            // 2. Remove any remaining commas, spaces, or stray "L"s
+            cleanStr = cleanStr.replace(/[L\s,]/gi, '');
 
+            // 3. Parse the clean string (which is now just "16672.00")
             const parsedNum = parseFloat(cleanStr) || 0;
             
             return 'L. ' + parsedNum.toLocaleString('en-US', {
