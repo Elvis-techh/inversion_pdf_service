@@ -235,7 +235,7 @@ app.post('/generate-receipt', async (req, res) => {
 
         res.status(200).send('Success');
 
-        setTimeout(() => { if (fs.existsSync(filePath)) fs.unlinkSync(filePath); }, 10000);
+        setTimeout(() => { if (fs.existsSync(filePath)) fs.unlinkSync(filePath); }, 120000);
 
     } catch (error) {
         console.error('Error generating PDF:', error.response ? error.response.data : error.message);
