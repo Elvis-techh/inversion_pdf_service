@@ -3,7 +3,7 @@ const puppeteer = require('puppeteer');
 const axios = require('axios');
 const fs = require('fs');
 const path = require('path');
-const { logoBase64 } = require('./logo'); // Imports your logo quietly!
+const { logoBase64 } = require('./logo'); 
 require('dotenv').config();
 
 const app = express();
@@ -21,7 +21,6 @@ app.post('/generate-receipt', async (req, res) => {
     } = req.body;
 
     try {
-        // Helper function for currency formatting (comas for thousands & decimal safety)
         const formatCurrency = (num) => {
             const parsedNum = Number(num) || 0;
             return 'L. ' + parsedNum.toLocaleString('en-US', {
@@ -30,7 +29,6 @@ app.post('/generate-receipt', async (req, res) => {
             });
         };
 
-        // 2a. Loop through the Today Transactions array
         const lineItemsHtml = (lineItems || []).map(item => `
             <tr>
                 <td>${item.descripcion}</td>
@@ -38,7 +36,6 @@ app.post('/generate-receipt', async (req, res) => {
             </tr>
         `).join('');
 
-        // 2b. The HTML Layout
         const htmlContent = `
             <!DOCTYPE html>
             <html lang="es">
@@ -47,28 +44,26 @@ app.post('/generate-receipt', async (req, res) => {
                 <style>
                     :root {
                         --primary-color: #1a253a;
-                        --text-main: #111111; /* Darkened for better contrast */
-                        --text-muted: #4a5568; /* Darkened from light gray to dark gray for readability */
+                        --text-main: #111111; 
+                        --text-muted: #4a5568; 
                         --border-color: #cbd5e1;
                         --red-highlight: #d32f2f;
                         --bg-highlight: #f8fafc;
                     }
                     
-                    /* FIX 1 & 3: Added flexbox to fill the page and increased base font size */
                     body {
                         font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
                         color: var(--text-main);
                         background-color: #ffffff;
                         margin: 0;
                         padding: 40px;
-                        font-size: 16px; /* Increased from 14px */
+                        font-size: 16px; 
                         min-height: 90vh;
                         display: flex;
                         flex-direction: column;
                         box-sizing: border-box;
                     }
                     
-                    /* FIX 1: Allow container to stretch */
                     .receipt-container { 
                         max-width: 800px; 
                         margin: 0 auto; 
@@ -98,27 +93,24 @@ app.post('/generate-receipt', async (req, res) => {
                     .summary-section { display: flex; justify-content: space-between; margin-bottom: 40px; }
                     .summary-col { width: 45%; }
                     
-                    /* FIX 4: Made all summary rows the same color (text-main) */
                     .summary-row { display: flex; justify-content: space-between; margin-bottom: 12px; color: var(--text-main); }
                     .summary-row .value { color: var(--text-main); font-weight: 600; }
                     
-                    /* FIX 4: Made Total Pagado Hoy slightly different (primary blue color) */
                     .summary-row.bold { color: var(--primary-color); font-weight: 700; font-size: 18px; border-bottom: 1px solid var(--border-color); padding-bottom: 5px; }
                     
-                    .highlight-box { background-color: var(--bg-highlight); border: 1px solid var(--border-color); border-radius: 8px; padding: 15px; margin-top: 15px; }
-                    .highlight-row { display: flex; justify-content: space-between; font-weight: 700; font-size: 18px;}
-                    .highlight-row .red-text { color: var(--red-highlight); text-align: right; }
+                    /* FIX 6: Forces the Nuevo Balance row to stay inline and center-aligned vertically */
+                    .highlight-box { background-color: var(--bg-highlight); border: 1px solid var(--border-color); border-radius: 8px; padding: 15px; margin-top: 15px; width: 100%; box-sizing: border-box; }
+                    .highlight-row { display: flex; justify-content: space-between; align-items: center; font-weight: 700; font-size: 18px;}
+                    .highlight-row .red-text { color: var(--red-highlight); text-align: right; white-space: nowrap; }
                     
-                    /* FIX 1: Pushes the footer to the absolute bottom of the page */
                     footer { text-align: center; margin-top: auto; padding-top: 30px; }
                     
-                    /* FIX 5: Made the signature area wider and the font significantly larger */
+                    /* FIX 5: Bolder, bigger cursive signature */
                     .signature-area { width: 350px; margin: 0 auto 30px auto; }
-                    .signature-font { font-size: 54px; color: var(--primary-color); margin: 0; line-height: 1; font-style: italic; font-family: 'Brush Script MT', cursive; }
+                    .signature-font { font-size: 72px; font-weight: bold; color: var(--primary-color); margin: 0; line-height: 1; font-style: italic; font-family: 'Brush Script MT', 'Lucida Handwriting', cursive; }
                     .signature-area hr { border: none; border-top: 1px solid var(--text-muted); margin: 5px 0; }
                     .signature-area p { font-size: 14px; color: var(--text-muted); margin: 0; }
                     
-                    /* FIX 6: Darker color and larger font size for footer text */
                     .thank-you { color: var(--text-main); font-size: 18px; margin-bottom: 10px; font-weight: 600; }
                     .contact-info { color: var(--text-muted); font-size: 14px; margin-bottom: 30px; }
                     .barcode img { max-width: 300px; height: 60px; }
@@ -128,7 +120,6 @@ app.post('/generate-receipt', async (req, res) => {
                 <div class="receipt-container">
                     <header>
                         <div class="logo-section">
-                            <!-- Logo embedded directly without lag in VS Code! -->
                             <img src="${logoBase64}" alt="MR Investments">
                             <h2>Inversiones Manuel</h2>
                         </div>
@@ -197,7 +188,8 @@ app.post('/generate-receipt', async (req, res) => {
                         <p class="thank-you">Gracias por su pago y su confianza en Inversiones Manuel.</p>
                         <p class="contact-info">Inversiones Manuel | Tela, Atlántida | Tel: +504 9315-4685 | Correo: edrosfamily@gmail.com</p>
                         <div class="barcode">
-                            <img src="https://bwipjs-api.metafloor.com/?bcid=code128&text=${receiptId}&scale=2&height=10&includetext=true" alt="Código de Barras">
+                            <!-- FIX 4: Removed includetext flag from URL so only the lines render -->
+                            <img src="https://bwipjs-api.metafloor.com/?bcid=code128&text=${receiptId}&scale=2&height=10" alt="Código de Barras">
                         </div>
                     </footer>
                 </div>
@@ -218,9 +210,7 @@ app.post('/generate-receipt', async (req, res) => {
 
         const airtableUrl = `https://api.airtable.com/v0/${process.env.AIRTABLE_BASE_ID}/Receipts/${recordId}`;
         await axios.patch(airtableUrl, {
-            fields: {
-                "Receipt PDF": [{ url: fileUrl }]
-            }
+            fields: { "Receipt PDF": [{ url: fileUrl }] }
         }, {
             headers: {
                 'Authorization': `Bearer ${process.env.AIRTABLE_API_KEY}`,
@@ -230,11 +220,7 @@ app.post('/generate-receipt', async (req, res) => {
 
         res.status(200).send('Success');
 
-        setTimeout(() => {
-            if (fs.existsSync(filePath)) {
-                fs.unlinkSync(filePath);
-            }
-        }, 10000);
+        setTimeout(() => { if (fs.existsSync(filePath)) fs.unlinkSync(filePath); }, 10000);
 
     } catch (error) {
         console.error('Error generating PDF:', error.response ? error.response.data : error.message);
