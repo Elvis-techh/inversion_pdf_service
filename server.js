@@ -47,7 +47,6 @@ app.post('/generate-receipt', async (req, res) => {
             <head>
                 <meta charset="UTF-8">
                 <style>
-                    /* Import a guaranteed cursive font from Google Fonts */
                     @import url('https://fonts.googleapis.com/css2?family=Dancing+Script:wght@700&display=swap');
 
                     :root {
@@ -75,7 +74,6 @@ app.post('/generate-receipt', async (req, res) => {
                     .receipt-container { max-width: 800px; margin: 0 auto; width: 100%; flex-grow: 1; display: flex; flex-direction: column; }
                     header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 40px; }
                     
-                    /* FIX 1: Larger Logo and Title */
                     .logo-section img { max-width: 280px; height: auto; } 
                     .logo-section h2 { margin: 12px 0 0 0; font-size: 24px; font-weight: 800; color: var(--primary-color); } 
                     
@@ -93,29 +91,33 @@ app.post('/generate-receipt', async (req, res) => {
                     th.text-right, td.text-right { text-align: right; }
                     td { padding: 16px 0; border-bottom: 1px solid var(--border-color); font-weight: 600; }
                     
-                    /* FIX 3: Increased width for summary columns to prevent text wrapping */
-                    .summary-section { display: flex; justify-content: space-between; margin-bottom: 40px; gap: 20px;}
+                    .summary-section { display: flex; justify-content: space-between; margin-bottom: 30px; gap: 20px;}
                     .summary-col { width: 48%; } 
                     
                     .summary-row { display: flex; justify-content: space-between; margin-bottom: 12px; color: var(--text-main); }
                     .summary-row .value { color: var(--text-main); font-weight: 600; }
                     .summary-row.bold { color: var(--primary-color); font-weight: 700; font-size: 18px; border-bottom: 1px solid var(--border-color); padding-bottom: 5px; }
                     
-                    /* FIX 3: Forced white-space to nowrap so it NEVER breaks into two lines */
+                    /* FIX 2: Responsive Box */
                     .highlight-box { background-color: var(--bg-highlight); border: 1px solid var(--border-color); border-radius: 8px; padding: 15px; margin-top: 15px; width: 100%; box-sizing: border-box; }
-                    .highlight-row { display: flex; justify-content: space-between; align-items: center; font-weight: 700; font-size: 18px; flex-wrap: nowrap; white-space: nowrap; }
-                    .highlight-row .red-text { color: var(--red-highlight); text-align: right; margin-left: 15px; }
+                    .highlight-row { display: flex; justify-content: space-between; align-items: center; font-weight: 700; font-size: 18px; }
                     
-                    footer { text-align: center; margin-top: auto; padding-top: 30px; }
+                    /* Allows the label to wrap naturally into two lines if space gets tight */
+                    .highlight-label { line-height: 1.2; padding-right: 15px; } 
                     
-                    /* FIX 2: Bigger, explicitly loaded Cursive Signature & Larger Label */
-                    .signature-area { width: 400px; margin: 0 auto 30px auto; }
-                    .signature-font { font-family: 'Dancing Script', cursive; font-size: 64px; font-weight: 700; color: var(--primary-color); margin: 0; line-height: 1.1; }
+                    /* flex-shrink: 0 completely prevents the red number from being crushed or wrapping */
+                    .highlight-row .red-text { color: var(--red-highlight); text-align: right; white-space: nowrap; flex-shrink: 0; }
+                    
+                    footer { text-align: center; margin-top: auto; padding-top: 20px; }
+                    
+                    /* FIX 1: Shrunk the signature slightly to save vertical space for the barcode */
+                    .signature-area { width: 400px; margin: 0 auto 20px auto; }
+                    .signature-font { font-family: 'Dancing Script', cursive; font-size: 48px; font-weight: 700; color: var(--primary-color); margin: 0; line-height: 1.1; }
                     .signature-area hr { border: none; border-top: 1px solid var(--text-muted); margin: 5px 0; }
-                    .signature-area p.firma-label { font-size: 18px; font-weight: 600; color: var(--text-muted); margin: 5px 0 0 0; }
+                    .signature-area p.firma-label { font-size: 16px; font-weight: 600; color: var(--text-muted); margin: 5px 0 0 0; }
                     
-                    .thank-you { color: var(--text-main); font-size: 18px; margin-bottom: 10px; font-weight: 600; }
-                    .contact-info { color: var(--text-muted); font-size: 14px; margin-bottom: 30px; }
+                    .thank-you { color: var(--text-main); font-size: 16px; margin-bottom: 10px; font-weight: 600; }
+                    .contact-info { color: var(--text-muted); font-size: 14px; margin-bottom: 20px; }
                     .barcode img { max-width: 300px; height: 60px; }
                 </style>
             </head>
@@ -175,7 +177,7 @@ app.post('/generate-receipt', async (req, res) => {
 
                             <div class="highlight-box">
                                 <div class="highlight-row">
-                                    <span>Nuevo Balance Pendiente</span>
+                                    <span class="highlight-label">Nuevo Balance Pendiente</span>
                                     <span class="red-text">${formatCurrency(nuevoBalance)}</span>
                                 </div>
                             </div>
@@ -186,7 +188,6 @@ app.post('/generate-receipt', async (req, res) => {
                         <div class="signature-area">
                             <p class="signature-font">Manuel Rivera</p>
                             <hr>
-                            <!-- Note: Changed this to use the new firma-label class -->
                             <p class="firma-label">Firma Autorizada</p>
                         </div>
                         <p class="thank-you">Gracias por su pago y su confianza en Inversiones Manuel.</p>
