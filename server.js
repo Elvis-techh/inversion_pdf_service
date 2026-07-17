@@ -34,26 +34,26 @@ app.post('/generate-receipt', async (req, res) => {
             });
         };
 
-        // NEW: Catch Airtable's comma-separated strings and split them into a clean array
-        let clientNames = [];
-        if (Array.isArray(customerName)) {
-            clientNames = customerName;
-        } else if (typeof customerName === 'string') {
-            // Split the string at every comma and remove any extra blank spaces
-            clientNames = customerName.split(',').map(name => name.trim());
-        } else {
-            clientNames = ['N/A'];
-        }
+        // --- FIX 1: The Names ---
+        // Force whatever Airtable sends into a single flat string, then split it by the comma
+        const rawNameString = Array.isArray(customerName) ? customerName.join(', ') : (customerName || 'N/A');
 
-        // NEW: Map through the array and create stacked div elements
+        // Split by comma, remove extra spaces, and filter out any blank entries
+        const clientNames = rawNameString.split(',').map(name => name.trim()).filter(Boolean);
         const clientHtml = clientNames.map(name => `<div>${name}</div>`).join('');
 
-        const lineItemsHtml = (lineItems || []).map(item => `
+        // --- FIX 2: The Quotation Marks ---
+        const lineItemsHtml = (lineItems || []).map(item => {
+            // Use regex to completely delete any double quotes from the description
+            const cleanDescription = (item.descripcion || '').replace(/"/g, '');
+
+            return `
             <tr>
-                <td>${item.descripcion}</td>
+                <td>${cleanDescription}</td>
                 <td class="text-right">${formatCurrency(item.monto)}</td>
             </tr>
-        `).join('');
+            `;
+        }).join('');
 
         const htmlContent = `
             <!DOCTYPE html>
