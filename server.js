@@ -3,7 +3,7 @@ const puppeteer = require('puppeteer');
 const axios = require('axios');
 const fs = require('fs');
 const path = require('path');
-const { logoBase64 } = require('./logo'); 
+const { logoBase64 } = require('./logo');
 require('dotenv').config();
 
 const app = express();
@@ -34,9 +34,17 @@ app.post('/generate-receipt', async (req, res) => {
             });
         };
 
-        // NEW: Convert customerName to an array (handles both single and multiple selections)
-        const clientNames = Array.isArray(customerName) ? customerName : [customerName || 'N/A'];
-        
+        // NEW: Catch Airtable's comma-separated strings and split them into a clean array
+        let clientNames = [];
+        if (Array.isArray(customerName)) {
+            clientNames = customerName;
+        } else if (typeof customerName === 'string') {
+            // Split the string at every comma and remove any extra blank spaces
+            clientNames = customerName.split(',').map(name => name.trim());
+        } else {
+            clientNames = ['N/A'];
+        }
+
         // NEW: Map through the array and create stacked div elements
         const clientHtml = clientNames.map(name => `<div>${name}</div>`).join('');
 
@@ -205,27 +213,27 @@ app.post('/generate-receipt', async (req, res) => {
         `;
 
         // Launch Puppeteer with highly strict memory-saving flags
-        browser = await puppeteer.launch({ 
+        browser = await puppeteer.launch({
             args: [
-                '--no-sandbox', 
+                '--no-sandbox',
                 '--disable-setuid-sandbox',
-                '--disable-dev-shm-usage', 
+                '--disable-dev-shm-usage',
                 '--single-process',
                 '--no-zygote'
-            ] 
+            ]
         });
 
         const page = await browser.newPage();
-        
+
         await page.setContent(htmlContent, { waitUntil: 'networkidle2', timeout: 45000 });
 
         const fileName = `receipt_${recordId}_${Date.now()}.pdf`;
         const filePath = path.join(tempDir, fileName);
         await page.pdf({ path: filePath, format: 'A4', printBackground: true });
-        
+
         const fileUrl = `https://inversion-pdf-service.onrender.com/temp/${fileName}`;
         const airtableUrl = `https://api.airtable.com/v0/${process.env.AIRTABLE_BASE_ID}/Receipts/${recordId}`;
-        
+
         await axios.patch(airtableUrl, {
             fields: { "Receipt PDF": [{ url: fileUrl }] }
         }, {
