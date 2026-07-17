@@ -34,6 +34,12 @@ app.post('/generate-receipt', async (req, res) => {
             });
         };
 
+        // NEW: Convert customerName to an array (handles both single and multiple selections)
+        const clientNames = Array.isArray(customerName) ? customerName : [customerName || 'N/A'];
+        
+        // NEW: Map through the array and create stacked div elements
+        const clientHtml = clientNames.map(name => `<div>${name}</div>`).join('');
+
         const lineItemsHtml = (lineItems || []).map(item => `
             <tr>
                 <td>${item.descripcion}</td>
@@ -84,7 +90,9 @@ app.post('/generate-receipt', async (req, res) => {
                     
                     .client-box { border: 1px solid var(--border-color); border-radius: 8px; padding: 20px; margin-bottom: 40px; }
                     .client-box .label { display: block; margin-bottom: 8px; }
-                    .client-box .client-name { font-size: 18px; font-weight: 600; }
+                    
+                    /* NEW: Flexbox styling to ensure names stack vertically */
+                    .cliente-box { display: flex; flex-direction: column; line-height: 1.4; font-size: 18px; font-weight: 600; }
                     
                     table { width: 100%; border-collapse: collapse; margin-bottom: 30px; }
                     th { text-align: left; color: var(--text-muted); font-size: 13px; text-transform: uppercase; letter-spacing: 0.5px; padding-bottom: 12px; border-bottom: 2px solid var(--border-color); }
@@ -98,19 +106,13 @@ app.post('/generate-receipt', async (req, res) => {
                     .summary-row .value { color: var(--text-main); font-weight: 600; }
                     .summary-row.bold { color: var(--primary-color); font-weight: 700; font-size: 18px; border-bottom: 1px solid var(--border-color); padding-bottom: 5px; }
                     
-                    /* FIX 2: Responsive Box */
                     .highlight-box { background-color: var(--bg-highlight); border: 1px solid var(--border-color); border-radius: 8px; padding: 15px; margin-top: 15px; width: 100%; box-sizing: border-box; }
                     .highlight-row { display: flex; justify-content: space-between; align-items: center; font-weight: 700; font-size: 18px; }
-                    
-                    /* Allows the label to wrap naturally into two lines if space gets tight */
                     .highlight-label { line-height: 1.2; padding-right: 15px; } 
-                    
-                    /* flex-shrink: 0 completely prevents the red number from being crushed or wrapping */
                     .highlight-row .red-text { color: var(--red-highlight); text-align: right; white-space: nowrap; flex-shrink: 0; }
                     
                     footer { text-align: center; margin-top: auto; padding-top: 20px; }
                     
-                    /* FIX 1: Shrunk the signature slightly to save vertical space for the barcode */
                     .signature-area { width: 400px; margin: 0 auto 20px auto; }
                     .signature-font { font-family: 'Dancing Script', cursive; font-size: 48px; font-weight: 700; color: var(--primary-color); margin: 0; line-height: 1.1; }
                     .signature-area hr { border: none; border-top: 1px solid var(--text-muted); margin: 5px 0; }
@@ -138,7 +140,8 @@ app.post('/generate-receipt', async (req, res) => {
 
                     <div class="client-box">
                         <span class="label">CLIENTE</span>
-                        <span class="client-name">${customerName}</span>
+                        <!-- NEW: Injected the compiled HTML list of names here -->
+                        <div class="cliente-box">${clientHtml}</div>
                     </div>
 
                     <table>
@@ -206,7 +209,7 @@ app.post('/generate-receipt', async (req, res) => {
             args: [
                 '--no-sandbox', 
                 '--disable-setuid-sandbox',
-                '--disable-dev-shm-usage', // Essential for 512MB RAM limits
+                '--disable-dev-shm-usage', 
                 '--single-process',
                 '--no-zygote'
             ] 
@@ -214,7 +217,6 @@ app.post('/generate-receipt', async (req, res) => {
 
         const page = await browser.newPage();
         
-        // Changed to networkidle2 and increased timeout so the barcode doesn't crash the server
         await page.setContent(htmlContent, { waitUntil: 'networkidle2', timeout: 45000 });
 
         const fileName = `receipt_${recordId}_${Date.now()}.pdf`;
@@ -241,7 +243,6 @@ app.post('/generate-receipt', async (req, res) => {
         console.error('Error generating PDF:', error.response ? error.response.data : error.message);
         res.status(500).send('Server Error');
     } finally {
-        // THE LIFESAVER: This ensures Chrome is completely killed and memory is freed, even if it crashes!
         if (browser) {
             await browser.close();
         }
